@@ -34,7 +34,7 @@ const db = getFirestore(app);
 function getLastNameFromEmail(email) {
   if (!email) return '';
   const emailParts = email.split('@')[0].split('.');
-  return emailParts.length > 0 ? emailParts[emailParts.length - 1] : '';
+  return emailParts.length > 1 ? emailParts[1].toUpperCase() : emailParts[0].toUpperCase();
 }
 
 // Αυτόματη μετατροπή σε κεφαλαία
@@ -126,7 +126,8 @@ async function submitLesson() {
       attentionNotes: attentionNotes || "—",
       timestamp: new Date().toISOString(),
       teacherEmail: auth.currentUser.email,
-      teacherLastName: teacherLastName.toUpperCase()
+      teacherLastName: teacherLastName,
+      school: "1st_gymnasio_pylaias" // Προσθήκη σχολείου
     });
 
     adminMessage.textContent = "Η ύλη καταχωρίστηκε επιτυχώς!";
@@ -156,8 +157,8 @@ async function viewLessons() {
   lessonsContainer.innerHTML = "";
   guestMessage.textContent = "";
 
-  if (!studentClass || !lessonFilter || !teacherLastName) {
-    guestMessage.textContent = "Συμπληρώστε Μάθημα, Τμήμα και Επίθετο Εκπαιδευτικού";
+  if (!studentClass || !lessonFilter) {
+    guestMessage.textContent = "Συμπληρώστε Μάθημα και Τμήμα";
     guestMessage.className = "error-message";
     return;
   }
@@ -165,28 +166,31 @@ async function viewLessons() {
   try {
     let q;
     if (auth.currentUser?.email === 'pa.domvros@gmail.com') {
+      // Διευθυντής: Βλέπει όλα τα μαθήματα του σχολείου
       q = query(
         collection(db, "lessons"),
         where("class", "==", studentClass),
         where("lesson", "==", lessonFilter),
-        where("teacherLastName", "==", teacherLastName),
+        where("school", "==", "1st_gymnasio_pylaias"),
         orderBy("date", "desc")
       );
     } else if (auth.currentUser) {
-      const currentTeacherLastName = getLastNameFromEmail(auth.currentUser.email).toUpperCase();
+      // Καθηγητής: Βλέπει μόνο τα δικά του μαθήματα
       q = query(
         collection(db, "lessons"),
         where("class", "==", studentClass),
         where("lesson", "==", lessonFilter),
-        where("teacherLastName", "==", currentTeacherLastName),
+        where("school", "==", "1st_gymnasio_pylaias"),
+        where("teacherEmail", "==", auth.currentUser.email),
         orderBy("date", "desc")
       );
     } else {
+      // Guest: Βλέπει όλα τα μαθήματα του σχολείου (χωρίς φίλτρο επιθέτου)
       q = query(
         collection(db, "lessons"),
         where("class", "==", studentClass),
         where("lesson", "==", lessonFilter),
-        where("teacherLastName", "==", teacherLastName),
+        where("school", "==", "1st_gymnasio_pylaias"),
         orderBy("date", "desc")
       );
     }
@@ -203,6 +207,7 @@ async function viewLessons() {
       const card = document.createElement("div");
       card.className = "lesson-card";
       
+      // Εμφάνιση επιθέτου μόνο για διευθυντή/καθηγητή
       const showTeacherInfo = auth.currentUser && 
                            (auth.currentUser.email === 'pa.domvros@gmail.com' || 
                             auth.currentUser.email === data.teacherEmail);
@@ -211,11 +216,11 @@ async function viewLessons() {
         <h4>${data.lesson} - ${data.class} (${data.date})</h4>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
         <p><strong>Προσοχή:</strong> ${data.attentionNotes || "—"}</p>
-        ${showTeacherInfo ? `<small>Καθηγητής: ${data.teacherLastName} (${data.teacherEmail})</small>` : ''}
+        ${showTeacherInfo ? `<small>Καθηγητής: ${data.teacherLastName}</small>` : ''}
       `;
       
-      if (auth.currentUser && (auth.currentUser.email === 'pa.domvros@gmail.com' || 
-          auth.currentUser.email === data.teacherEmail)) {
+      // Εμφάνιση delete button μόνο για τον δημιουργό ή τον διευθυντή
+      if (auth.currentUser?.email === data.teacherEmail || auth.currentUser?.email === 'pa.domvros@gmail.com') {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Διαγραφή";
         delBtn.className = "delete-btn";
