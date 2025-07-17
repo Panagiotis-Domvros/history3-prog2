@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Νεότερη και Σύγχρονη Ιστορία Γ΄ Γυμνασίου ‑ Οδηγίες Διδασκαλίας</title>
+
+  <!-- ----------------------------------------------------
+       CSS  (παρακάμπτει τα παλιά χρώματα + νέα schedule‑form)
+  ----------------------------------------------------- -->
+  <style>
+  /* ------------------- ΒΑΣΙΚΑ ΣΤΟΙΧΕΙΑ ------------------- */
+  body{
+    font-family:'Arial',sans-serif;
+    background:#f5f5dc;                 /* Off‑white */
+    color:#333;margin:20px;line-height:1.6;
+  }
+  h1{color:#daa520;text-align:center;}  /* Gold τίτλος σελίδας */
+
+  /* ----------------- COLLAPSIBLES ------------------------ */
+  .collapsible,
+  .sub-collapsible{
+    background:#008080;                 /* Teal φόντο */
+    color:#f5f5dc !important;           /* Off‑white γράμματα */
+    text-shadow:1px 1px 2px #daa520;    /* Gold σκιά */
+    cursor:pointer;padding:18px;
+    width:100%;border:none;text-align:left;
+    outline:none;font-weight:bold;
+    transition:background-color .3s ease;
+    border-radius:5px;margin-bottom:5px;
+  }
+  .sub-collapsible{padding:12px 18px;font-size:1em;border-radius:3px;margin-top:5px}
+  .collapsible:hover,.sub-collapsible:hover{background:#006666}
+  .collapsible:active,.sub-collapsible:active{background:#004d4d}
+
+  .collapsible-content,
+  .sub-collapsible-content{
+    padding:0 18px;
+    max-height:0;overflow:hidden;
+    transition:max-height .3s ease-out;
+    background:#fdf5e6;                /* Light off‑white */
+    border-left:2px solid #daa520;margin-bottom:10px;
+  }
+  .sub-collapsible-content{border-left:1px solid #daa520;margin-bottom:5px;background:#fffaf0}
+
+  /* ----------------- SCHEDULE FORM ----------------------- */
+  .schedule-form{
+    margin:15px 0;padding:15px;
+    border:1px solid #daa520;border-radius:5px;
+    background:#fffaf0;
+  }
+  .schedule-form h3{margin-top:0;color:#008080}
+  .schedule-form label{display:block;margin-bottom:8px;color:#333}
+  .schedule-form input,
+  .schedule-form textarea{
+    width:100%;padding:6px;border:1px solid #ccc;
+    border-radius:3px;box-sizing:border-box;
+  }
+  .schedule-form button{
+    background:#008080;color:#f5f5dc;border:none;
+    padding:10px 15px;border-radius:4px;cursor:pointer;
+  }
+  .schedule-form button:hover{background:#006666}
+  </style>
+</head>
+
+<body>
+
+  <!-- --------- START CONTENT (άφησε ΟΠΩΣ ΕΙΝΑΙ τα δικά σου) --------- -->
+  <div class="container">
+    <!-- …όλο το υπάρχον περιεχόμενό σου (τίτλοι, ενοότητες κ.λπ.)… -->
+  </div>
+  <!-- ---------- END CONTENT ---------------------------------------- -->
+
+  <!-- ----------------------------------------------------
+       JAVASCRIPT  (λειτουργία collapsibles + schedule‑form)
+  ----------------------------------------------------- -->
+  <script>
+  document.addEventListener('DOMContentLoaded', () => {
+
+    /* ---------- 1. Βασική λειτουργία collapsible ------------------ */
+    const toggle = (btnClass) => {
+      document.querySelectorAll('.' + btnClass).forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          btn.classList.toggle('active');
+          const c = btn.nextElementSibling;
+          c.style.maxHeight = c.style.maxHeight ? null : c.scrollHeight + 'px';
+
+          /* Αν είναι sub‑collapsible ανανεώνει το parent ύψος */
+          if(btnClass==='sub-collapsible' && c.style.maxHeight){
+            const parent = btn.closest('.collapsible-content');
+            if(parent) parent.style.maxHeight = parent.scrollHeight + c.scrollHeight + 'px';
+          }
+        });
+      });
+    };
+    toggle('collapsible');
+    toggle('sub-collapsible');
+
+    /* ---------- 2. Προσθήκη πλαισίου προγραμματισμού -------------- */
+    document.querySelectorAll('.collapsible-content').forEach(content=>{
+      const form = document.createElement('div');
+      form.className = 'schedule-form';
+      form.innerHTML = `
+        <h3>Προγραμματισμός Διδασκαλίας από τον/την Εκπαιδευτικό</h3>
+        <label>Τμήμα: <input type="text" name="section"></label>
+        <label>Ημερομηνία: <input type="date" name="date"></label>
+        <label>Διάρκεια (ώρες): <input type="number" name="duration" min="1" step="0.5"></label>
+        <label>Σημειώσεις – Παρατηρήσεις:<br>
+               <textarea name="notes" rows="3"></textarea></label>
+        <label>Email παραλήπτη:
+               <input type="email" name="recipient" placeholder="name@example.com"></label>
+        <button class="send-schedule">Αποστολή</button>`;
+      content.appendChild(form);
+    });
+
+    /* ---------- 3. Συγκέντρωση & αποστολή με mailto: -------------- */
+    document.addEventListener('click', e=>{
+      if(!e.target.classList.contains('send-schedule')) return;
+
+      /* (a) σώσε όσα πεδία συμπληρώθηκαν */
+      const forms = [...document.querySelectorAll('.schedule-form')];
+      let bodyTxt = '';
+      forms.forEach(f=>{
+        const v = n => f.querySelector('[name="'+n+'"]').value.trim();
+        const section=v('section'),date=v('date'),dur=v('duration'),notes=v('notes');
+        if(section||date||dur||notes){
+          bodyTxt += `Τμήμα: ${section}\nΗμερομηνία: ${date}\n` +
+                     `Διάρκεια: ${dur} ώρες\nΣημειώσεις: ${notes}\n` +
+                     `---------------------------\n`;
+        }
+      });
+
+      /* (b) έλεγχος παραλήπτη */
+      const recipient = e.target.parentElement.querySelector('[name="recipient"]').value.trim();
+      if(!recipient){alert('Παρακαλώ εισάγετε email παραλήπτη.');return;}
+
+      /* (c) mailto: (δουλεύει χωρίς server) */
+      const subject = encodeURIComponent('Προγραμματισμός Διδασκαλίας');
+      const body    = encodeURIComponent(bodyTxt || 'Δεν συμπληρώθηκαν στοιχεία.');
+      window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+    });
+
+  });
+  </script>
+</body>
+</html>
