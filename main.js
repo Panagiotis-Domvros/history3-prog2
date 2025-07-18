@@ -26,16 +26,18 @@ const firebaseConfig = {
   appId: "1:70334432902:web:d8ba08cfcf6d912fca3307"
 };
 
-// Ενεργοποίηση debug
-console.log("Initializing Firebase...");
+// Debug initialization
+console.log("[DEBUG] Initializing Firebase...");
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-console.log("Firebase initialized successfully!");
+console.log("[DEBUG] Firebase initialized successfully!");
 
 // Helper functions
 function getLastNameFromEmail(email) {
-  return email ? email.split('@')[0].split('.')[1]?.toUpperCase() || email.split('@')[0].toUpperCase() : '';
+  if (!email) return '';
+  const emailParts = email.split('@')[0].split('.');
+  return emailParts.length > 1 ? emailParts[1].toUpperCase() : emailParts[0].toUpperCase();
 }
 
 function isDirector() {
@@ -61,30 +63,74 @@ async function handleLogin() {
   }
 
   try {
-    console.log("Προσπάθεια σύνδεσης...");
-    await signInWithEmailAndPassword(auth, email, password);
+    console.log("[DEBUG] Attempting login...");
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    console.log("[DEBUG] Login successful:", userCredential.user.email);
   } catch (error) {
-    console.error("Σφάλμα σύνδεσης:", error);
-    alert(`Σφάλμα σύνδεσης: ${error.message}`);
+    console.error("[ERROR] Login failed:", error);
+    document.getElementById("loginError").textContent = `Σφάλμα σύνδεσης: ${error.message}`;
   }
 }
 
 async function handleLogout() {
   try {
     await signOut(auth);
+    console.log("[DEBUG] Logout successful");
   } catch (error) {
-    console.error("Σφάλμα αποσύνδεσης:", error);
+    console.error("[ERROR] Logout failed:", error);
   }
 }
 
 function toggleAdminView(isLoggedIn) {
   document.getElementById("loginForm").style.display = isLoggedIn ? "none" : "block";
   document.getElementById("adminSection").style.display = isLoggedIn ? "block" : "none";
+  console.log(`[DEBUG] Admin view: ${isLoggedIn ? "ON" : "OFF"}`);
 }
 
-// Προβολή μαθημάτων (ενημερωμένο)
+// Lesson functions
+async function submitLesson() {
+  const school = document.getElementById("schoolInput").value;
+  const lesson = document.getElementById("lessonInput").value.trim();
+  const classVal = document.getElementById("classInput").value.trim().toUpperCase();
+  const date = document.getElementById("dateInput").value;
+  const taughtMaterial = document.getElementById("taughtMaterialInput").value.trim();
+  const attentionNotes = document.getElementById("attentionNotesInput").value.trim();
+
+  if (!school || !lesson || !classVal || !date || !taughtMaterial) {
+    alert("Συμπληρώστε όλα τα απαραίτητα πεδία!");
+    return;
+  }
+
+  try {
+    console.log("[DEBUG] Submitting lesson...");
+    const docRef = await addDoc(collection(db, "lessons"), {
+      school,
+      lesson: lesson.toUpperCase(),
+      class: classVal,
+      date: new Date(date).toISOString(), // Convert to ISO format
+      taughtMaterial,
+      attentionNotes: attentionNotes || "—",
+      timestamp: new Date().toISOString(),
+      teacherEmail: auth.currentUser.email,
+      teacherLastName: getLastNameFromEmail(auth.currentUser.email)
+    });
+    
+    console.log("[DEBUG] Lesson submitted with ID:", docRef.id);
+    alert("Η ύλη καταχωρίστηκε επιτυχώς!");
+    
+    // Clear form
+    document.getElementById("lessonInput").value = "";
+    document.getElementById("classInput").value = "";
+    document.getElementById("taughtMaterialInput").value = "";
+    document.getElementById("attentionNotesInput").value = "";
+  } catch (error) {
+    console.error("[ERROR] Submission failed:", error);
+    alert(`Σφάλμα καταχώρησης: ${error.message}`);
+  }
+}
+
 async function viewLessons() {
-  console.log("Προβολή μαθημάτων...");
+  console.log("[DEBUG] Fetching lessons...");
   
   const school = document.getElementById("schoolInputView").value;
   const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
@@ -92,7 +138,7 @@ async function viewLessons() {
   const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
 
   if (!school || !studentClass || !lessonFilter) {
-    alert("Συμπληρώστε όλα τα απαραίτητα πεδία!");
+    alert("Συμπληρώστε Σχολείο, Μάθημα και Τμήμα!");
     return;
   }
 
@@ -101,26 +147,40 @@ async function viewLessons() {
       where("school", "==", school),
       where("class", "==", studentClass),
       where("lesson", "==", lessonFilter),
-      orderBy("date", "desc")
+      orderBy("timestamp", "desc") // Changed from 'date' to 'timestamp'
     ];
 
-    if (teacherLastName) conditions.push(where("teacherLastName", "==", teacherLastName));
-    if (auth.currentUser && !isDirector()) conditions.push(where("teacherEmail", "==", auth.currentUser.email));
+    if (teacherLastName) {
+      conditions.push(where("teacherLastName", "==", teacherLastName));
+    }
+
+    if (auth.currentUser && !isDirector()) {
+      conditions.push(where("teacherEmail", "==", auth.currentUser.email));
+    }
 
     const q = query(collection(db, "lessons"), ...conditions);
     const snapshot = await getDocs(q);
     const container = document.getElementById("lessonsContainer");
-    container.innerHTML = snapshot.empty ? "<p>Δεν βρέθηκαν καταχωρήσεις</p>" : "";
+    container.innerHTML = "";
+
+    console.log(`[DEBUG] Found ${snapshot.size} lessons`);
+    
+    if (snapshot.empty) {
+      container.innerHTML = "<p>Δεν βρέθηκαν καταχωρήσεις</p>";
+      return;
+    }
 
     snapshot.forEach(doc => {
       const data = doc.data();
+      console.log("[DEBUG] Lesson data:", data); // Debug log
+      
       const card = document.createElement("div");
       card.className = "lesson-card";
       card.innerHTML = `
-        <h4>${data.lesson} - ${data.class} (${data.date})</h4>
+        <h4>${data.lesson} - ${data.class} (${new Date(data.date).toLocaleDateString('el-GR')})</h4>
         <p><strong>Σχολείο:</strong> ${getSchoolName(data.school)}</p>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
-        ${data.attentionNotes ? `<p><strong>Προσοχή:</strong> ${data.attentionNotes}</p>` : ''}
+        ${data.attentionNotes && data.attentionNotes !== "—" ? `<p><strong>Προσοχή:</strong> ${data.attentionNotes}</p>` : ''}
         <small>Καθηγητής: ${data.teacherLastName}</small>
       `;
 
@@ -128,76 +188,46 @@ async function viewLessons() {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Διαγραφή";
         delBtn.className = "delete-btn";
-        delBtn.onclick = () => confirm("Διαγραφή;") && deleteDoc(doc.ref).then(() => card.remove());
+        delBtn.onclick = async () => {
+          if (confirm("Να διαγραφεί αυτή η καταχώρηση;")) {
+            await deleteDoc(doc.ref);
+            card.remove();
+          }
+        };
         card.appendChild(delBtn);
       }
       container.appendChild(card);
     });
   } catch (error) {
-    console.error("Σφάλμα:", error);
-    alert(`Σφάλμα: ${error.message}`);
+    console.error("[ERROR] Fetch failed:", error);
+    alert(`Σφάλμα φόρτωσης: ${error.message}`);
   }
 }
 
-// Εκκίνηση εφαρμογής
+// Initialize app
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("DOM loaded, setting up listeners...");
+  console.log("[DEBUG] DOM fully loaded");
   
-  // Auth state
+  // Auth state listener
   onAuthStateChanged(auth, (user) => {
-    console.log("Auth state changed:", user ? "Logged in" : "Logged out");
+    if (user) {
+      console.log(`[DEBUG] User authenticated: ${user.email}`);
+    } else {
+      console.log("[DEBUG] No authenticated user");
+    }
     toggleAdminView(!!user);
   });
 
-  // Listeners με έλεγχο ύπαρξης στοιχείων
-  const addListener = (id, handler) => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("click", handler);
-    else console.error(`Element ${id} not found!`);
-  };
+  // Event listeners
+  document.getElementById("loginBtn").addEventListener("click", handleLogin);
+  document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+  document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
+  document.getElementById("viewLessonsBtn").addEventListener("click", viewLessons);
 
-  addListener("loginBtn", handleLogin);
-  addListener("logoutBtn", handleLogout);
-  addListener("viewLessonsBtn", viewLessons);
-  
-  // Ειδικός έλεγχος για το submitLessonBtn
-  const submitBtn = document.getElementById("submitLessonBtn");
-  if (submitBtn) {
-    submitBtn.addEventListener("click", async () => {
-      const school = document.getElementById("schoolInput").value;
-      const lesson = document.getElementById("lessonInput").value.trim();
-      const classVal = document.getElementById("classInput").value.trim().toUpperCase();
-      const date = document.getElementById("dateInput").value;
-      const taughtMaterial = document.getElementById("taughtMaterialInput").value.trim();
-
-      if (!school || !lesson || !classVal || !date || !taughtMaterial) {
-        alert("Συμπληρώστε όλα τα πεδία!");
-        return;
-      }
-
-      try {
-        await addDoc(collection(db, "lessons"), {
-          school,
-          lesson: lesson.toUpperCase(),
-          class: classVal,
-          date,
-          taughtMaterial,
-          attentionNotes: document.getElementById("attentionNotesInput").value.trim() || "—",
-          timestamp: new Date().toISOString(),
-          teacherEmail: auth.currentUser.email,
-          teacherLastName: getLastNameFromEmail(auth.currentUser.email)
-        });
-        alert("Καταχωρίστηκε επιτυχώς!");
-        // Καθαρισμός φόρμας
-        ["lessonInput", "classInput", "taughtMaterialInput", "attentionNotesInput"].forEach(id => {
-          document.getElementById(id).value = "";
-        });
-      } catch (error) {
-        console.error("Σφάλμα:", error);
-        alert(`Σφάλμα: ${error.message}`);
-      }
-    });
-  } else {
-    console.error("Submit button not found!");
-  }
+  // Debug element check
+  ['email', 'password', 'schoolInput', 'lessonInput', 'classInput'].forEach(id => {
+    if (!document.getElementById(id)) {
+      console.error(`[ERROR] Missing element: ${id}`);
+    }
+  });
 });
