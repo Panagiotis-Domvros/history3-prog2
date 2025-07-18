@@ -49,8 +49,8 @@
         <label for="attentionNotesInput">Σημειώσεις για μαθητές:</label>
         <textarea id="attentionNotesInput" rows="3" placeholder="Τι πρέπει να προσέξουν..."></textarea>
         
-        <label for="homeworkInput">Εργασία για το σπίτι:</label>
-        <textarea id="homeworkInput" rows="2" placeholder="Προαιρετική εργασία..."></textarea>
+        <label for="privateNotesInput">Ιδιωτικές Σημειώσεις (Βαθμοί, Επίδοση):</label>
+        <textarea id="privateNotesInput" rows="3" placeholder="Προσωπικές σημειώσεις..."></textarea>
         
         <button type="button" id="submitLessonBtn">Καταχώριση Ύλης</button>
         <p id="adminMessage" class="message"></p>
@@ -60,31 +60,31 @@
       <div class="action-buttons">
         <button type="button" id="logoutBtn">Αποσύνδεση</button>
       </div>
+    </div>
 
-      <!-- Προβολή Ύλης (Ορατή και σε μη συνδεδεμένους) -->
-      <div class="search-section">
-        <h3>Προβολή Ύλης</h3>
-        <div class="search-filters">
-          <label for="schoolInputView">Σχολείο:</label>
-          <select id="schoolInputView" required>
-            <option value="" disabled selected>Επιλέξτε σχολείο</option>
-            <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
-            <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
-          </select>
-          
-          <label for="lessonFilter">Μάθημα:</label>
-          <input type="text" id="lessonFilter" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
-          
-          <label for="studentClass">Τμήμα:</label>
-          <input type="text" id="studentClass" required placeholder="π.χ. Α1">
-          
-          <label for="teacherLastName">Επίθετο Καθηγητή:</label>
-          <input type="text" id="teacherLastName" placeholder="Προαιρετικό">
-          
-          <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
-        </div>
-        <div id="lessonsContainer"></div>
+    <!-- Προβολή Ύλης (Ορατή σε όλους) -->
+    <div id="publicView">
+      <h3>Προβολή Ύλης</h3>
+      <div class="search-filters">
+        <label for="schoolInputView">Σχολείο:</label>
+        <select id="schoolInputView" required>
+          <option value="" disabled selected>Επιλέξτε σχολείο</option>
+          <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
+          <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+        </select>
+        
+        <label for="lessonFilter">Μάθημα:</label>
+        <input type="text" id="lessonFilter" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
+        
+        <label for="studentClass">Τμήμα:</label>
+        <input type="text" id="studentClass" required placeholder="π.χ. Α1">
+        
+        <label for="teacherLastName">Επίθετο Καθηγητή:</label>
+        <input type="text" id="teacherLastName" placeholder="Προαιρετικό">
+        
+        <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
       </div>
+      <div id="lessonsContainer"></div>
     </div>
   </div>
 
