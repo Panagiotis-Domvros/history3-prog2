@@ -41,7 +41,41 @@ function isDirector() {
   return auth.currentUser?.email === 'pa.domvros@gmail.com';
 }
 
-// Submit Lesson (με νέο πεδίο σχολείου)
+function getSchoolName(schoolId) {
+  const schools = {
+    "1st_gymnasio_pylaias": "1ο Γυμνάσιο Πυλαίας",
+    "gymnasio_epanomis": "Γυμνάσιο Επανομής"
+  };
+  return schools[schoolId] || schoolId;
+}
+
+// Auth functions
+async function handleLogin() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    document.getElementById("loginError").textContent = "";
+  } catch (error) {
+    document.getElementById("loginError").textContent = "Σφάλμα σύνδεσης: " + error.message;
+  }
+}
+
+async function handleLogout() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Σφάλμα αποσύνδεσης:", error);
+  }
+}
+
+function toggleAdminView(isLoggedIn) {
+  document.getElementById("loginForm").style.display = isLoggedIn ? "none" : "block";
+  document.getElementById("adminSection").style.display = isLoggedIn ? "block" : "none";
+}
+
+// Submit Lesson
 async function submitLesson() {
   const school = document.getElementById("schoolInput").value;
   const lesson = document.getElementById("lessonInput").value.trim();
@@ -67,56 +101,60 @@ async function submitLesson() {
       teacherEmail: auth.currentUser.email,
       teacherLastName: getLastNameFromEmail(auth.currentUser.email)
     });
+    
     alert("Η ύλη καταχωρίστηκε επιτυχώς!");
+    // Clear form
+    document.getElementById("lessonInput").value = "";
+    document.getElementById("classInput").value = "";
+    document.getElementById("taughtMaterialInput").value = "";
+    document.getElementById("attentionNotesInput").value = "";
   } catch (error) {
     console.error("Σφάλμα καταχώρησης:", error);
     alert("Σφάλμα καταχώρησης: " + error.message);
   }
 }
 
-// View Lessons (με φιλτράρισμα ανά σχολείο)
+// View Lessons
 async function viewLessons() {
-  const school = "1st_gymnasio_pylaias"; // ή επιλέξτε από select
+  const school = document.getElementById("schoolInputView").value;
   const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
   const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
+  const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
 
-  if (!studentClass || !lessonFilter) {
-    alert("Συμπληρώστε Μάθημα και Τμήμα");
+  if (!school || !studentClass || !lessonFilter) {
+    alert("Συμπληρώστε Σχολείο, Μάθημα και Τμήμα");
     return;
   }
 
   try {
     let q;
-    if (isDirector()) {
-      q = query(
-        collection(db, "lessons"),
-        where("school", "==", school),
-        where("class", "==", studentClass),
-        where("lesson", "==", lessonFilter),
-        orderBy("date", "desc")
-      );
-    } else if (auth.currentUser) {
-      q = query(
-        collection(db, "lessons"),
-        where("school", "==", school),
-        where("class", "==", studentClass),
-        where("lesson", "==", lessonFilter),
-        where("teacherEmail", "==", auth.currentUser.email),
-        orderBy("date", "desc")
-      );
-    } else {
-      q = query(
-        collection(db, "lessons"),
-        where("school", "==", school),
-        where("class", "==", studentClass),
-        where("lesson", "==", lessonFilter),
-        orderBy("date", "desc")
-      );
+    const conditions = [
+      where("school", "==", school),
+      where("class", "==", studentClass),
+      where("lesson", "==", lessonFilter),
+      orderBy("date", "desc")
+    ];
+
+    // Add teacher filter if provided
+    if (teacherLastName) {
+      conditions.push(where("teacherLastName", "==", teacherLastName));
     }
+
+    // If user is teacher (not director), only show their entries
+    if (auth.currentUser && !isDirector()) {
+      conditions.push(where("teacherEmail", "==", auth.currentUser.email));
+    }
+
+    q = query(collection(db, "lessons"), ...conditions);
 
     const snapshot = await getDocs(q);
     const lessonsContainer = document.getElementById("lessonsContainer");
     lessonsContainer.innerHTML = "";
+
+    if (snapshot.empty) {
+      lessonsContainer.innerHTML = "<p>Δεν βρέθηκαν καταχωρήσεις</p>";
+      return;
+    }
 
     snapshot.forEach((doc) => {
       const data = doc.data();
@@ -124,10 +162,10 @@ async function viewLessons() {
       card.className = "lesson-card";
       card.innerHTML = `
         <h4>${data.lesson} - ${data.class} (${data.date})</h4>
+        <p><strong>Σχολείο:</strong> ${getSchoolName(data.school)}</p>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
         <p><strong>Προσοχή:</strong> ${data.attentionNotes || "—"}</p>
-        ${isDirector() || auth.currentUser?.email === data.teacherEmail ? 
-          `<small>Καθηγητής: ${data.teacherLastName}</small>` : ''}
+        <small>Καθηγητής: ${data.teacherLastName}</small>
       `;
 
       if (isDirector() || auth.currentUser?.email === data.teacherEmail) {
@@ -146,20 +184,17 @@ async function viewLessons() {
     });
   } catch (error) {
     console.error("Σφάλμα φόρτωσης:", error);
+    alert("Σφάλμα φόρτωσης: " + error.message);
   }
 }
 
-
 // Initialize the app
 document.addEventListener('DOMContentLoaded', () => {
-  setupUpperCaseInputs();
-
   // Auth state listener
   onAuthStateChanged(auth, (user) => {
     toggleAdminView(!!user);
     if (user) {
       console.log("User logged in:", user.email);
-      loadPrivateNotes();
     } else {
       console.log("User logged out");
     }
@@ -170,10 +205,4 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById("logoutBtn")?.addEventListener("click", handleLogout);
   document.getElementById("submitLessonBtn")?.addEventListener("click", submitLesson);
   document.getElementById("viewLessonsBtn")?.addEventListener("click", viewLessons);
-  document.getElementById("submitPrivateNoteBtn")?.addEventListener("click", submitPrivateNote);
-  document.getElementById("searchPrivateNotesBtn")?.addEventListener("click", () => {
-    const lastName = document.getElementById("searchLastNameInput").value.trim();
-    const classVal = document.getElementById("searchClassInput").value.trim().toUpperCase();
-    loadPrivateNotes(lastName, classVal);
-  });
 });

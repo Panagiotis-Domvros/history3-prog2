@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Παναγιώτης Δόμβρος - Διευθυντής 1ου Γυμνασίου Πυλαίας</title>
+  <title>Καταχώριση Ύλης - Σχολεία Πυλαίας & Επανομής</title>
   <style>
     body { 
       font-family: Arial, sans-serif; 
@@ -137,8 +137,9 @@
       <label for="schoolInput">Σχολείο:</label>
       <select id="schoolInput" required>
         <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
-        <option value="2nd_gymnasio_pylaias">2ο Γυμνάσιο Πυλαίας</option>
-      </select>      <label for="lessonInput">Μάθημα:</label>
+        <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+      </select>
+      <label for="lessonInput">Μάθημα:</label>
       <input type="text" id="lessonInput" required />
       <label for="classInput">Τμήμα:</label>
       <input type="text" id="classInput" required />
@@ -175,6 +176,11 @@
 
     <h3>Προβολή Ύλης</h3>
     <div class="search-filters">
+      <label for="schoolInputView">Σχολείο:</label>
+      <select id="schoolInputView" required>
+        <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
+        <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+      </select>
       <label for="lessonFilter">Μάθημα:</label>
       <input type="text" id="lessonFilter" required />
       <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
@@ -184,7 +190,7 @@
       <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
       
       <label for="teacherLastName">Επίθετο Εκπαιδευτικού:</label>
-      <input type="text" id="teacherLastName" required />
+      <input type="text" id="teacherLastName" />
       
       <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
     </div>
