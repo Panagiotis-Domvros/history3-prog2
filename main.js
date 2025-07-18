@@ -127,6 +127,7 @@ async function viewLessons() {
     const school = document.getElementById("schoolInputView").value;
     const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
     const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
+    const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
 
     if (!school || !studentClass || !lessonFilter) {
       throw new Error("Συμπληρώστε Σχολείο, Τμήμα και Μάθημα");
@@ -136,15 +137,24 @@ async function viewLessons() {
     container.innerHTML = '<p class="loading">Φόρτωση δεδομένων...</p>';
 
     // Δημιουργία query
-    const q = query(
-      collection(db, "lessons"),
+    const conditions = [
       where("school", "==", school),
       where("class", "==", studentClass),
       where("lesson", "==", lessonFilter),
       orderBy("timestamp", "desc")
-    );
+    ];
 
+    if (teacherLastName) {
+      conditions.push(where("teacherLastName", "==", teacherLastName));
+    }
+
+    if (auth.currentUser && !isDirector()) {
+      conditions.push(where("teacherEmail", "==", auth.currentUser.email));
+    }
+
+    const q = query(collection(db, "lessons"), ...conditions);
     const snapshot = await getDocs(q);
+    
     container.innerHTML = "";
 
     if (snapshot.empty) {
@@ -155,6 +165,7 @@ async function viewLessons() {
             <li>Σχολείο: ${getSchoolName(school)}</li>
             <li>Τμήμα: ${studentClass}</li>
             <li>Μάθημα: ${lessonFilter}</li>
+            ${teacherLastName ? `<li>Εκπαιδευτικός: ${teacherLastName}</li>` : ''}
           </ul>
         </div>
       `;
@@ -173,6 +184,7 @@ async function viewLessons() {
         <p><small>Καθηγητής: ${data.teacherLastName}</small></p>
       `;
 
+      // Διαγραφή μόνο για διευθυντή ή δημιουργό
       if (isDirector() || auth.currentUser?.email === data.teacherEmail) {
         const delBtn = document.createElement("button");
         delBtn.textContent = "Διαγραφή";
@@ -180,11 +192,13 @@ async function viewLessons() {
         delBtn.onclick = async () => {
           if (confirm("Θέλετε να διαγράψετε αυτή την καταχώρηση;")) {
             await deleteDoc(doc.ref);
-            card.remove();
+            card.style.opacity = "0";
+            setTimeout(() => card.remove(), 300);
           }
         };
         card.appendChild(delBtn);
       }
+      
       container.appendChild(card);
     });
 
@@ -193,7 +207,7 @@ async function viewLessons() {
     document.getElementById("lessonsContainer").innerHTML = `
       <div class="error-message">
         <p>Σφάλμα φόρτωσης: ${error.message}</p>
-        <button onclick="viewLessons()">Δοκιμάστε ξανά</button>
+        <button class="retry-btn" onclick="viewLessons()">Δοκιμάστε ξανά</button>
       </div>
     `;
   }
