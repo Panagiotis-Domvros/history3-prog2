@@ -14,7 +14,8 @@ import {
   query, 
   where, 
   orderBy, 
-  getDocs 
+  getDocs,
+  updateDoc  // Προσθήκη για πιθανές ενημερώσεις
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -30,12 +31,12 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Λίστα καθηγητών (ενημερώστε με τα δικά σας emails)
+// Λίστα καθηγητών με ελληνικά ονόματα (ΕΝΗΜΕΡΩΣΤΕ ΤΑ EMAILS ΣΑΣ!)
 const TEACHERS = {
   'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
   'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου',
-  // Προσθέστε παρακάτω όλους τους καθηγητές:
-  'giorgos_papadopoulos@example.com': 'Γιώργος Παπαδόπουλος'
+  // Προσθέστε όλους τους καθηγητές παρακάτω:
+  'example@email.com': 'Ονοματεπώνυμο Καθηγητή'
 };
 
 // Βοηθητικές Συναρτήσεις
@@ -52,7 +53,16 @@ function getTeacherName(email) {
     console.error("Λάθος: Δεν βρέθηκε email χρήστη.");
     return "Καθηγητής";
   }
-  return TEACHERS[email] || "Καθηγητής"; // Προεπιλογή αν λείπει το email
+  
+  // Κανονικοποίηση email (πεζά, χωρίς κενά)
+  const normalizedEmail = email.trim().toLowerCase();
+  
+  if (!TEACHERS[normalizedEmail]) {
+    console.warn(`Προσθέστε το email "${normalizedEmail}" στη λίστα TEACHERS!`);
+    return "Καθηγητής";
+  }
+  
+  return TEACHERS[normalizedEmail];
 }
 
 // Σύνδεση/Αποσύνδεση
@@ -91,14 +101,17 @@ async function submitLesson() {
     taughtMaterial: document.getElementById("taughtMaterialInput").value.trim(),
     attentionNotes: document.getElementById("attentionNotesInput").value.trim() || "—",
     teacherEmail: auth.currentUser.email,
-    teacherName: getTeacherName(auth.currentUser.email), // Αποθηκεύει το όνομα στη βάση
+    teacherName: getTeacherName(auth.currentUser.email), // Αποθήκευση ονόματος στη βάση
     timestamp: new Date().toISOString()
   };
+
+  // Εκτύπωση για έλεγχο (μπορείτε να το αφαιρέσετε αργότερα)
+  console.log("Δεδομένα που αποστέλλονται:", lessonData);
 
   try {
     await addDoc(collection(db, "lessons"), lessonData);
     showMessage('adminMessage', 'Η ύλη καταχωρίστηκε επιτυχώς!');
-    // Προαιρετικό: Καθαρισμός πεδίων μετά την υποβολή
+    // Προαιρετικό: Καθαρισμός πεδίων
     document.getElementById("taughtMaterialInput").value = '';
     document.getElementById("attentionNotesInput").value = '';
   } catch (error) {
@@ -138,7 +151,7 @@ async function viewLessons() {
         <h4>${data.lesson} - ${data.class}</h4>
         <p><strong>Ημερομηνία:</strong> ${new Date(data.date).toLocaleDateString('el-GR')}</p>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
-        <p><strong>Καθηγητής:</strong> ${data.teacherName || "Καθηγητής"}</p> <!-- Εδώ! -->
+        <p><strong>Καθηγητής:</strong> ${data.teacherName || "Καθηγητής"}</p>
       `;
 
       // Διαγραφή (μόνο για τον δημιουργό ή τον admin)
@@ -182,3 +195,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("publicView").style.display = "block";
   });
 });
+
+// ΠΡΟΑΙΡΕΤΙΚΟ: Script για ενημέρωση υπαρχουσών καταχωρήσεων
+async function updateExistingLessons() {
+  const snapshot = await getDocs(collection(db, "lessons"));
+  snapshot.forEach(async (doc) => {
+    const data = doc.data();
+    if (!data.teacherName || data.teacherName === "Καθηγητής") {
+      await updateDoc(doc.ref, {
+        teacherName: getTeacherName(data.teacherEmail)
+      });
+      console.log(`Ενημερώθηκε η καταχώρηση με ID: ${doc.id}`);
+    }
+  });
+}
+
+// Καλέστε αυτή τη συνάρτηση ΜΟΝΟ μια φορά αν χρειάζεται:
+// updateExistingLessons();
