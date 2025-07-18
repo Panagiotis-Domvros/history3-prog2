@@ -33,29 +33,26 @@ const db = getFirestore(app);
 // Βοηθητικές Συναρτήσεις
 function showMessage(elementId, message, isError = false) {
   const element = document.getElementById(elementId);
-  element.textContent = message;
-  element.style.color = isError ? '#c00' : '#008080';
+  if (element) {
+    element.textContent = message;
+    element.style.color = isError ? '#c00' : '#008080';
+  }
 }
 
+// Λίστα καθηγητών με ελληνικά ονόματα (ενημερώστε με τα emails σας)
+const TEACHERS = {
+  'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
+  'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου',
+  // Προσθέστε άλλους καθηγητές παρακάτω:
+  'example@email.com': 'Παράδειγμα Καθηγητή'
+};
+
 function getTeacherName(email) {
-  // 1. Λίστα Επωνύμων (Προσθέστε όλους τους καθηγητές εδώ)
-  const teachers = {
-    'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
-    'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου',
-    // Προσθέστε και άλλους καθηγητές με το email τους:
-    'nikos.papadopoulos@example.com': 'Νίκος Παπαδόπουλος'
-  };
-
-  // 2. Αν βρεθεί το email, επιστροφή ελληνικού ονόματος
-  if (teachers[email]) {
-    return teachers[email];
+  if (!email) {
+    console.error("Λάθος: Δεν βρέθηκε email χρήστη. Είστε σίγουρα συνδεδεμένοι;");
+    return "Καθηγητής";
   }
-
-  // 3. Αν δεν υπάρχει, εμφάνιση προειδοποιητικού μηνύματος
-  console.warn(`Δεν βρέθηκε ελληνικό όνομα για το email: ${email}. Προσθέστε το στη λίστα teachers.`);
-  
-  // 4. Επιστροφή προεπιλεγμένου μηνύματος (προαιρετικό)
-  return "Καθηγητής"; // Ή μπορείτε να ζητήσετε από τον χρήστη να εισαγάγει το όνομά του
+  return TEACHERS[email] || "Καθηγητής"; // Επιστρέφει το όνομα ή "Καθηγητής" αν δεν υπάρχει
 }
 
 // Σύνδεση/Αποσύνδεση
@@ -75,12 +72,17 @@ async function handleLogout() {
   try {
     await signOut(auth);
   } catch (error) {
-    console.error("Logout error:", error);
+    console.error("Σφάλμα αποσύνδεσης:", error);
   }
 }
 
-// Διαχείριση Μαθημάτων
+// Καταχώρηση Μαθήματος
 async function submitLesson() {
+  if (!auth.currentUser) {
+    showMessage('adminMessage', 'Πρέπει να συνδεθείτε πρώτα!', true);
+    return;
+  }
+
   const lessonData = {
     school: document.getElementById("schoolInput").value,
     lesson: document.getElementById("lessonInput").value.trim().toUpperCase(),
@@ -96,11 +98,15 @@ async function submitLesson() {
   try {
     await addDoc(collection(db, "lessons"), lessonData);
     showMessage('adminMessage', 'Η ύλη καταχωρίστηκε επιτυχώς!');
+    // Προαιρετικό: Καθαρισμός φορμών μετά την υποβολή
+    document.getElementById("taughtMaterialInput").value = '';
+    document.getElementById("attentionNotesInput").value = '';
   } catch (error) {
-    showMessage('adminMessage', `Σφάλμα καταχώρησης: ${error.message}`, true);
+    showMessage('adminMessage', `Σφάλμα: ${error.message}`, true);
   }
 }
 
+// Προβολή Μαθημάτων
 async function viewLessons() {
   const school = document.getElementById("schoolInputView").value;
   const lesson = document.getElementById("lessonFilter").value.trim().toUpperCase();
@@ -120,7 +126,7 @@ async function viewLessons() {
     container.innerHTML = '';
 
     if (snapshot.empty) {
-      container.innerHTML = '<div class="no-results">Δεν βρέθηκαν καταχωρήσεις</div>';
+      container.innerHTML = '<div class="no-results">Δεν βρέθηκαν καταχωρήσεις.</div>';
       return;
     }
 
@@ -135,6 +141,7 @@ async function viewLessons() {
         <p><strong>Καθηγητής:</strong> ${data.teacherName}</p>
       `;
 
+      // Διαγραφή (μόνο για τον καθηγητή που την έκανε ή τον admin)
       if (auth.currentUser?.email === data.teacherEmail || auth.currentUser?.email === 'pa.domvros@gmail.com') {
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "delete-btn";
@@ -152,9 +159,9 @@ async function viewLessons() {
     });
 
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Σφάλμα:", error);
     document.getElementById("lessonsContainer").innerHTML = 
-      '<div class="error-message">Σφάλμα φόρτωσης δεδομένων</div>';
+      '<div class="error-message">Σφάλμα φόρτωσης δεδομένων.</div>';
   }
 }
 
@@ -163,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Ορίζουμε σημερινή ημερομηνία
   document.getElementById('dateInput').valueAsDate = new Date();
 
-  // Σύνδεση Event Listeners
+  // Event Listeners
   document.getElementById("loginBtn").addEventListener("click", handleLogin);
   document.getElementById("logoutBtn").addEventListener("click", handleLogout);
   document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
@@ -174,5 +181,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById("loginForm").style.display = user ? "none" : "block";
     document.getElementById("adminSection").style.display = user ? "block" : "none";
     document.getElementById("publicView").style.display = "block";
+
+    // Εμφάνιση μηνύματος αν ο χρήστης δεν είναι στη λίστα TEACHERS
+    if (user && !TEACHERS[user.email]) {
+      console.warn(`Ο χρήστης ${user.email} δεν έχει ελληνικό όνομα στη λίστα TEACHERS.`);
+    }
   });
 });
