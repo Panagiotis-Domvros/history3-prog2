@@ -31,8 +31,14 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Debugging
-console.log("Firebase initialized");
+// Global error handling
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled rejection:', event.reason);
+});
 
 // Helper functions
 function getLastNameFromEmail(email) {
@@ -88,7 +94,7 @@ function toggleAdminView(isLoggedIn) {
   console.log("Admin view:", isLoggedIn ? "ON" : "OFF");
 }
 
-// Submit Lesson (Επιδιορθωμένο)
+// Submit Lesson
 async function submitLesson() {
   const school = document.getElementById("schoolInput").value;
   const lesson = document.getElementById("lessonInput").value.trim().toUpperCase();
@@ -103,7 +109,7 @@ async function submitLesson() {
   }
 
   try {
-    const docData = {
+    const docRef = await addDoc(collection(db, "lessons"), {
       school,
       lesson,
       class: classVal,
@@ -113,13 +119,9 @@ async function submitLesson() {
       timestamp: new Date().toISOString(),
       teacherEmail: auth.currentUser.email,
       teacherLastName: getLastNameFromEmail(auth.currentUser.email)
-    };
+    });
     
-    console.log("Submitting:", docData);
-    
-    const docRef = await addDoc(collection(db, "lessons"), docData);
     console.log("Document written with ID:", docRef.id);
-    
     alert("Η ύλη καταχωρίστηκε επιτυχώς!");
     
     // Clear form
@@ -133,15 +135,20 @@ async function submitLesson() {
   }
 }
 
-// View Lessons (Επιδιορθωμένο)
+// View Lessons
 async function viewLessons() {
   try {
+    console.log("Current user:", auth.currentUser?.email || "Anonymous");
+
     const school = document.getElementById("schoolInputView").value;
     const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
     const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
     const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
 
     console.log("Search filters:", { school, studentClass, lessonFilter, teacherLastName });
+
+    const container = document.getElementById("lessonsContainer");
+    container.innerHTML = '<p class="loading">Φόρτωση δεδομένων...</p>';
 
     const conditions = [
       where("school", "==", school),
@@ -159,34 +166,31 @@ async function viewLessons() {
     }
 
     const q = query(collection(db, "lessons"), ...conditions);
-    console.log("Executing query:", q);
-
     const snapshot = await getDocs(q);
-    console.log("Query results:", snapshot.size, "documents found");
-
-    const container = document.getElementById("lessonsContainer");
+    
     container.innerHTML = "";
 
     if (snapshot.empty) {
       container.innerHTML = `
         <div class="no-results">
-          <p>Debug Information:</p>
+          <p>Δεν βρέθηκαν καταχωρήσεις για:</p>
           <ul>
-            <li>Σχολείο: ${school} (${getSchoolName(school)})</li>
+            <li>Σχολείο: ${getSchoolName(school)}</li>
             <li>Τμήμα: ${studentClass}</li>
             <li>Μάθημα: ${lessonFilter}</li>
-            <li>Εκπαιδευτικός: ${teacherLastName || 'Οποιοσδήποτε'}</li>
-            <li>Τρέχων χρήστης: ${auth.currentUser?.email || 'Ανώνυμος'}</li>
+            ${teacherLastName ? `<li>Εκπαιδευτικός: ${teacherLastName}</li>` : ''}
           </ul>
+          <p class="debug-info">
+            Τρέχων χρήστης: ${auth.currentUser?.email || 'Ανώνυμος'}<br>
+            ${isDirector() ? '(Διευθυντής)' : ''}
+          </p>
         </div>
       `;
       return;
     }
 
-    snapshot.forEach((doc) => {
+    snapshot.forEach(doc => {
       const data = doc.data();
-      console.log("Document data:", data);
-
       const card = document.createElement("div");
       card.className = "lesson-card";
       card.innerHTML = `
@@ -197,7 +201,6 @@ async function viewLessons() {
         <p><small>Καθηγητής: ${data.teacherLastName}</small></p>
       `;
 
-      // Show delete button only for director or creator
       const showDeleteButton = isDirector() || auth.currentUser?.email === data.teacherEmail;
       if (showDeleteButton) {
         const deleteBtn = document.createElement("button");
@@ -207,9 +210,8 @@ async function viewLessons() {
           if (confirm("Θέλετε να διαγράψετε αυτή την καταχώρηση;")) {
             try {
               await deleteDoc(doc.ref);
-              card.style.transition = "opacity 0.5s";
               card.style.opacity = "0";
-              setTimeout(() => card.remove(), 500);
+              setTimeout(() => card.remove(), 300);
             } catch (error) {
               console.error("Delete error:", error);
               alert("Σφάλμα κατά τη διαγραφή");
@@ -217,8 +219,9 @@ async function viewLessons() {
           }
         };
         card.appendChild(deleteBtn);
+        console.log("Added delete button for:", data.teacherEmail);
       }
-
+      
       container.appendChild(card);
     });
 
@@ -226,13 +229,7 @@ async function viewLessons() {
     console.error("Error:", error);
     document.getElementById("lessonsContainer").innerHTML = `
       <div class="error-message">
-        <p>Σφάλμα: ${error.message}</p>
-        <p>Παρακαλώ ελέγξτε:</p>
-        <ul>
-          <li>Έχετε συνδεθεί;</li>
-          <li>Τα φίλτρα είναι συμπληρωμένα σωστά;</li>
-          <li>Υπάρχουν τα απαραίτητα ευρετήρια;</li>
-        </ul>
+        <p>Σφάλμα φόρτωσης: ${error.message}</p>
         <button class="retry-btn" onclick="viewLessons()">Δοκιμάστε ξανά</button>
       </div>
     `;
