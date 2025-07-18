@@ -38,11 +38,24 @@ function showMessage(elementId, message, isError = false) {
 }
 
 function getTeacherName(email) {
+  // 1. Λίστα Επωνύμων (Προσθέστε όλους τους καθηγητές εδώ)
   const teachers = {
     'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
-    'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου'
+    'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου',
+    // Προσθέστε και άλλους καθηγητές με το email τους:
+    'nikos.papadopoulos@example.com': 'Νίκος Παπαδόπουλος'
   };
-  return teachers[email] || email.split('@')[0].split('.')[1]?.toUpperCase() || '';
+
+  // 2. Αν βρεθεί το email, επιστροφή ελληνικού ονόματος
+  if (teachers[email]) {
+    return teachers[email];
+  }
+
+  // 3. Αν δεν υπάρχει, εμφάνιση προειδοποιητικού μηνύματος
+  console.warn(`Δεν βρέθηκε ελληνικό όνομα για το email: ${email}. Προσθέστε το στη λίστα teachers.`);
+  
+  // 4. Επιστροφή προεπιλεγμένου μηνύματος (προαιρετικό)
+  return "Καθηγητής"; // Ή μπορείτε να ζητήσετε από τον χρήστη να εισαγάγει το όνομά του
 }
 
 // Σύνδεση/Αποσύνδεση
