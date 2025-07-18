@@ -15,7 +15,7 @@ import {
   where, 
   orderBy, 
   getDocs,
-  updateDoc  // Προσθήκη για πιθανές ενημερώσεις
+  updateDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -31,12 +31,33 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Λίστα καθηγητών με ελληνικά ονόματα (ΕΝΗΜΕΡΩΣΤΕ ΤΑ EMAILS ΣΑΣ!)
+// Λίστα καθηγητών με ελληνικά ονόματα
 const TEACHERS = {
   'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
   'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου',
-  // Προσθέστε όλους τους καθηγητές παρακάτω:
-  'example@email.com': 'Ονοματεπώνυμο Καθηγητή'
+  'eleni@example.com': 'Ελένη Παπαδοπούλου',
+  // Προσθέστε άλλους καθηγητές παρακάτω:
+  'newteacher@example.com': 'Νέος Καθηγητής'
+};
+
+// Αντιστοίχιση Σχολείων -> Μαθημάτων -> Τμημάτων -> Καθηγητών
+const TEACHER_ASSIGNMENTS = {
+  '1st_gymnasio_pylaias': {               // 1ο Γυμνάσιο Πυλαίας
+    'ΙΣΤΟΡΙΑ': {                           // Μάθημα
+      'Β4': 'pa.domvros@gmail.com',        // Τμήμα Β4 -> Παναγιώτης Δόμβρος
+      'Γ5': 'pa.domvros@gmail.com'         // Τμήμα Γ5 -> Παναγιώτης Δόμβρος
+    }
+    // Προσθέστε άλλα μαθήματα για το 1ο Γυμνάσιο εδώ:
+  },
+  'gymnasio_epanomis': {                  // Γυμνάσιο Επανομής
+    'ΙΣΤΟΡΙΑ': {
+      'Γ5': 'mariamalamidou@gmail.com'     // Τμήμα Γ5 -> Μαρία Μαλαμίδου
+    },
+    'ΝΟΕΛΛΗΝΙΚΗ ΓΛΩΣΣΑ': {
+      'Γ2': 'eleni@example.com'            // Τμήμα Γ2 -> Ελένη Παπαδοπούλου
+    }
+    // Προσθέστε άλλα μαθήματα για το Γυμνάσιο Επανομής εδώ:
+  }
 };
 
 // Βοηθητικές Συναρτήσεις
@@ -53,16 +74,8 @@ function getTeacherName(email) {
     console.error("Λάθος: Δεν βρέθηκε email χρήστη.");
     return "Καθηγητής";
   }
-  
-  // Κανονικοποίηση email (πεζά, χωρίς κενά)
   const normalizedEmail = email.trim().toLowerCase();
-  
-  if (!TEACHERS[normalizedEmail]) {
-    console.warn(`Προσθέστε το email "${normalizedEmail}" στη λίστα TEACHERS!`);
-    return "Καθηγητής";
-  }
-  
-  return TEACHERS[normalizedEmail];
+  return TEACHERS[normalizedEmail] || "Καθηγητής";
 }
 
 // Σύνδεση/Αποσύνδεση
@@ -101,17 +114,13 @@ async function submitLesson() {
     taughtMaterial: document.getElementById("taughtMaterialInput").value.trim(),
     attentionNotes: document.getElementById("attentionNotesInput").value.trim() || "—",
     teacherEmail: auth.currentUser.email,
-    teacherName: getTeacherName(auth.currentUser.email), // Αποθήκευση ονόματος στη βάση
+    teacherName: getTeacherName(auth.currentUser.email),
     timestamp: new Date().toISOString()
   };
-
-  // Εκτύπωση για έλεγχο (μπορείτε να το αφαιρέσετε αργότερα)
-  console.log("Δεδομένα που αποστέλλονται:", lessonData);
 
   try {
     await addDoc(collection(db, "lessons"), lessonData);
     showMessage('adminMessage', 'Η ύλη καταχωρίστηκε επιτυχώς!');
-    // Προαιρετικό: Καθαρισμός πεδίων
     document.getElementById("taughtMaterialInput").value = '';
     document.getElementById("attentionNotesInput").value = '';
   } catch (error) {
@@ -119,7 +128,7 @@ async function submitLesson() {
   }
 }
 
-// Προβολή Μαθημάτων (για γονείς και καθηγητές)
+// Προβολή Μαθημάτων
 async function viewLessons() {
   const school = document.getElementById("schoolInputView").value;
   const lesson = document.getElementById("lessonFilter").value.trim().toUpperCase();
@@ -143,6 +152,12 @@ async function viewLessons() {
       return;
     }
 
+    // Αντιστοίχιση καθηγητή βάσει σχολείου/μαθήματος/τμήματος
+    const assignedTeacherEmail = TEACHER_ASSIGNMENTS[school]?.[lesson]?.[studentClass];
+    const teacherName = assignedTeacherEmail 
+      ? getTeacherName(assignedTeacherEmail) 
+      : "Καθηγητής";
+
     snapshot.forEach(doc => {
       const data = doc.data();
       const card = document.createElement("div");
@@ -151,10 +166,9 @@ async function viewLessons() {
         <h4>${data.lesson} - ${data.class}</h4>
         <p><strong>Ημερομηνία:</strong> ${new Date(data.date).toLocaleDateString('el-GR')}</p>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
-        <p><strong>Καθηγητής:</strong> ${data.teacherName || "Καθηγητής"}</p>
+        <p><strong>Εκπαιδευτικός:</strong> ${teacherName}</p>
       `;
 
-      // Διαγραφή (μόνο για τον δημιουργό ή τον admin)
       if (auth.currentUser && (auth.currentUser.email === data.teacherEmail || auth.currentUser.email === 'pa.domvros@gmail.com')) {
         const deleteBtn = document.createElement("button");
         deleteBtn.className = "delete-btn";
@@ -179,16 +193,12 @@ async function viewLessons() {
 
 // Αρχικοποίηση
 document.addEventListener('DOMContentLoaded', () => {
-  // Ορίζουμε σημερινή ημερομηνία
   document.getElementById('dateInput').valueAsDate = new Date();
-
-  // Event Listeners
   document.getElementById("loginBtn").addEventListener("click", handleLogin);
   document.getElementById("logoutBtn").addEventListener("click", handleLogout);
   document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
   document.getElementById("viewLessonsBtn").addEventListener("click", viewLessons);
 
-  // Ελέγχουμε κατάσταση σύνδεσης
   onAuthStateChanged(auth, (user) => {
     document.getElementById("loginForm").style.display = user ? "none" : "block";
     document.getElementById("adminSection").style.display = user ? "block" : "none";
@@ -196,19 +206,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// ΠΡΟΑΙΡΕΤΙΚΟ: Script για ενημέρωση υπαρχουσών καταχωρήσεων
+// Script για ενημέρωση υπαρχουσών καταχωρήσεων (προαιρετικό)
 async function updateExistingLessons() {
   const snapshot = await getDocs(collection(db, "lessons"));
   snapshot.forEach(async (doc) => {
     const data = doc.data();
-    if (!data.teacherName || data.teacherName === "Καθηγητής") {
+    const assignedTeacherEmail = TEACHER_ASSIGNMENTS[data.school]?.[data.lesson]?.[data.class];
+    if (assignedTeacherEmail && (!data.teacherName || data.teacherName === "Καθηγητής")) {
       await updateDoc(doc.ref, {
-        teacherName: getTeacherName(data.teacherEmail)
+        teacherName: getTeacherName(assignedTeacherEmail)
       });
-      console.log(`Ενημερώθηκε η καταχώρηση με ID: ${doc.id}`);
+      console.log(`Ενημερώθηκε η καταχώρηση ${doc.id}`);
     }
   });
 }
-
-// Καλέστε αυτή τη συνάρτηση ΜΟΝΟ μια φορά αν χρειάζεται:
-// updateExistingLessons();
+// updateExistingLessons(); // Ξεσχολιάστε για μια φορά αν χρειάζεται
