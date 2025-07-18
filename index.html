@@ -3,87 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Καταχώριση Ύλης - Σχολεία Πυλαίας & Επανομής</title>
+  <title>Καταχώριση Ύλης</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <h1>Καταχώριση Ύλης</h1>
-    <h2>Δημιουργία: Παναγιώτης Δόμβρος - Διευθυντής 1ου Γυμνασίου Πυλαίας</h2>
-
+    
     <!-- Φόρμα Σύνδεσης -->
     <div id="loginForm">
-      <label for="email">Email:</label>
-      <input type="text" id="email" placeholder="π.χ. john.doe@example.com">
-      <label for="password">Κωδικός:</label>
-      <input type="password" id="password" placeholder="••••••••">
-      <button type="button" id="loginBtn">Σύνδεση Εκπαιδευτικού</button>
-      <p id="loginError" class="error-message"></p>
+      <h3>Σύνδεση Εκπαιδευτικού</h3>
+      <input type="text" id="email" placeholder="Email">
+      <input type="password" id="password" placeholder="Κωδικός">
+      <button id="loginBtn">Σύνδεση</button>
+      <p id="loginError"></p>
     </div>
 
     <!-- Διαχειριστική Ζώνη -->
     <div id="adminSection" style="display:none;">
+      <button id="logoutBtn">Αποσύνδεση</button>
+      
       <!-- Καταχώριση Ύλης -->
       <div class="form-section">
-        <h3>Καταχώριση Ύλης</h3>
-        <label for="schoolInput">Σχολείο:</label>
-        <select id="schoolInput" required>
-          <option value="" disabled selected>Επιλέξτε σχολείο</option>
+        <h3>Νέα Καταχώριση</h3>
+        <select id="schoolInput">
           <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
           <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
         </select>
-        
-        <label for="lessonInput">Μάθημα:</label>
-        <input type="text" id="lessonInput" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
-        
-        <label for="classInput">Τμήμα:</label>
-        <input type="text" id="classInput" required placeholder="π.χ. Α1">
-        <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
-        
-        <label for="dateInput">Ημερομηνία:</label>
-        <input type="date" id="dateInput" required>
-        
-        <label for="taughtMaterialInput">Ύλη που διδάχθηκε:</label>
-        <textarea id="taughtMaterialInput" required rows="4" placeholder="Περιγράψτε την ύλη..."></textarea>
-        
-        <label for="attentionNotesInput">Σημειώσεις για μαθητές:</label>
-        <textarea id="attentionNotesInput" rows="3" placeholder="Τι πρέπει να προσέξουν..."></textarea>
-        
-        <label for="privateNotesInput">Ιδιωτικές Σημειώσεις (Βαθμοί, Επίδοση):</label>
-        <textarea id="privateNotesInput" rows="3" placeholder="Προσωπικές σημειώσεις..."></textarea>
-        
-        <button type="button" id="submitLessonBtn">Καταχώριση Ύλης</button>
-        <p id="adminMessage" class="message"></p>
-      </div>
-
-      <!-- Κουμπιά Διαχείρισης -->
-      <div class="action-buttons">
-        <button type="button" id="logoutBtn">Αποσύνδεση</button>
+        <input type="text" id="lessonInput" placeholder="Μάθημα">
+        <input type="text" id="classInput" placeholder="Τμήμα">
+        <input type="date" id="dateInput">
+        <textarea id="taughtMaterialInput" placeholder="Ύλη"></textarea>
+        <textarea id="attentionNotesInput" placeholder="Σημειώσεις για μαθητές"></textarea>
+        <textarea id="privateNotesInput" placeholder="Ιδιωτικές σημειώσεις"></textarea>
+        <button id="submitLessonBtn">Καταχώριση</button>
+        <p id="adminMessage"></p>
       </div>
     </div>
 
-    <!-- Προβολή Ύλης (Ορατή σε όλους) -->
+    <!-- Προβολή Ύλης (Για όλους) -->
     <div id="publicView">
-      <h3>Προβολή Ύλης</h3>
-      <div class="search-filters">
-        <label for="schoolInputView">Σχολείο:</label>
-        <select id="schoolInputView" required>
-          <option value="" disabled selected>Επιλέξτε σχολείο</option>
-          <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
-          <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
-        </select>
-        
-        <label for="lessonFilter">Μάθημα:</label>
-        <input type="text" id="lessonFilter" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
-        
-        <label for="studentClass">Τμήμα:</label>
-        <input type="text" id="studentClass" required placeholder="π.χ. Α1">
-        
-        <label for="teacherLastName">Επίθετο Καθηγητή:</label>
-        <input type="text" id="teacherLastName" placeholder="Προαιρετικό">
-        
-        <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
-      </div>
+      <h3>Αναζήτηση Ύλης</h3>
+      <select id="schoolInputView">
+        <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
+        <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+      </select>
+      <input type="text" id="lessonFilter" placeholder="Μάθημα">
+      <input type="text" id="studentClass" placeholder="Τμήμα">
+      <button id="viewLessonsBtn">Αναζήτηση</button>
       <div id="lessonsContainer"></div>
     </div>
   </div>
