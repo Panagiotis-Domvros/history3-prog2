@@ -17,6 +17,7 @@ import {
   getDocs 
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+// Firebase Configuration
 const firebaseConfig = {
   apiKey: "AIzaSyDVoOQsCrEvhRbFZP4rBgyf9dEd-AQq-us",
   authDomain: "schoolappv2-c1c84.firebaseapp.com",
@@ -26,21 +27,22 @@ const firebaseConfig = {
   appId: "1:70334432902:web:d8ba08cfcf6d912fca3307"
 };
 
-// Εκκίνηση Firebase
+// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Global error handling
-window.addEventListener('error', (event) => {
-  console.error('Global error:', event.error);
-});
+// Helper Functions
+function showMessage(elementId, message, type = 'info') {
+  const element = document.getElementById(elementId);
+  element.textContent = message;
+  element.className = `${type}-message`;
+  setTimeout(() => {
+    element.textContent = '';
+    element.className = 'message';
+  }, 5000);
+}
 
-window.addEventListener('unhandledrejection', (event) => {
-  console.error('Unhandled rejection:', event.reason);
-});
-
-// Helper functions
 function getLastNameFromEmail(email) {
   if (!email) return '';
   const emailParts = email.split('@')[0].split('.');
@@ -59,42 +61,54 @@ function getSchoolName(schoolId) {
   return schools[schoolId] || schoolId;
 }
 
-// Auth functions
+// Authentication Functions
 async function handleLogin() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
+  const loginBtn = document.getElementById("loginBtn");
   
   if (!email || !password) {
-    alert("Συμπληρώστε email και κωδικό πρόσβασης");
+    showMessage('loginError', 'Συμπληρώστε email και κωδικό πρόσβασης', 'error');
     return;
   }
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log("User logged in:", userCredential.user.email);
-    document.getElementById("loginError").textContent = "";
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Σύνδεση...";
+    
+    await signInWithEmailAndPassword(auth, email, password);
+    showMessage('loginError', '', 'success');
   } catch (error) {
     console.error("Login error:", error);
-    document.getElementById("loginError").textContent = `Σφάλμα σύνδεσης: ${error.message}`;
+    showMessage('loginError', `Σφάλμα σύνδεσης: ${error.message}`, 'error');
+  } finally {
+    loginBtn.disabled = false;
+    loginBtn.textContent = "Σύνδεση Εκπαιδευτικού";
   }
 }
 
 async function handleLogout() {
   try {
     await signOut(auth);
-    console.log("User logged out");
+    showMessage('adminMessage', 'Αποσυνδεθήκατε επιτυχώς', 'success');
   } catch (error) {
     console.error("Logout error:", error);
+    showMessage('adminMessage', `Σφάλμα αποσύνδεσης: ${error.message}`, 'error');
   }
 }
 
 function toggleAdminView(isLoggedIn) {
   document.getElementById("loginForm").style.display = isLoggedIn ? "none" : "block";
   document.getElementById("adminSection").style.display = isLoggedIn ? "block" : "none";
-  console.log("Admin view:", isLoggedIn ? "ON" : "OFF");
+  
+  // Set today's date as default
+  if (isLoggedIn) {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('dateInput').value = today;
+  }
 }
 
-// Submit Lesson
+// Lesson Functions
 async function submitLesson() {
   const school = document.getElementById("schoolInput").value;
   const lesson = document.getElementById("lessonInput").value.trim().toUpperCase();
@@ -102,14 +116,18 @@ async function submitLesson() {
   const date = document.getElementById("dateInput").value;
   const taughtMaterial = document.getElementById("taughtMaterialInput").value.trim();
   const attentionNotes = document.getElementById("attentionNotesInput").value.trim();
+  const submitBtn = document.getElementById("submitLessonBtn");
 
   if (!school || !lesson || !classVal || !date || !taughtMaterial) {
-    alert("Συμπληρώστε όλα τα απαραίτητα πεδία");
+    showMessage('adminMessage', 'Συμπληρώστε όλα τα απαραίτητα πεδία', 'error');
     return;
   }
 
   try {
-    const docRef = await addDoc(collection(db, "lessons"), {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Καταχώριση...";
+    
+    await addDoc(collection(db, "lessons"), {
       school,
       lesson,
       class: classVal,
@@ -121,33 +139,38 @@ async function submitLesson() {
       teacherLastName: getLastNameFromEmail(auth.currentUser.email)
     });
     
-    console.log("Document written with ID:", docRef.id);
-    alert("Η ύλη καταχωρίστηκε επιτυχώς!");
+    showMessage('adminMessage', 'Η ύλη καταχωρίστηκε επιτυχώς!', 'success');
     
     // Clear form
     document.getElementById("lessonInput").value = "";
-    document.getElementById("classInput").value = "";
     document.getElementById("taughtMaterialInput").value = "";
     document.getElementById("attentionNotesInput").value = "";
+    document.getElementById("classInput").focus();
   } catch (error) {
     console.error("Error adding document:", error);
-    alert(`Σφάλμα καταχώρησης: ${error.message}`);
+    showMessage('adminMessage', `Σφάλμα καταχώρησης: ${error.message}`, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Καταχώριση Ύλης";
   }
 }
 
-// View Lessons
 async function viewLessons() {
+  const school = document.getElementById("schoolInputView").value;
+  const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
+  const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
+  const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
+  const container = document.getElementById("lessonsContainer");
+  const viewBtn = document.getElementById("viewLessonsBtn");
+
+  if (!school || !studentClass || !lessonFilter) {
+    showMessage('guestMessage', 'Συμπληρώστε όλα τα απαραίτητα πεδία', 'error');
+    return;
+  }
+
   try {
-    console.log("Current user:", auth.currentUser?.email || "Anonymous");
-
-    const school = document.getElementById("schoolInputView").value;
-    const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
-    const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
-    const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
-
-    console.log("Search filters:", { school, studentClass, lessonFilter, teacherLastName });
-
-    const container = document.getElementById("lessonsContainer");
+    viewBtn.disabled = true;
+    viewBtn.textContent = "Φόρτωση...";
     container.innerHTML = '<p class="loading">Φόρτωση δεδομένων...</p>';
 
     const conditions = [
@@ -180,10 +203,6 @@ async function viewLessons() {
             <li>Μάθημα: ${lessonFilter}</li>
             ${teacherLastName ? `<li>Εκπαιδευτικός: ${teacherLastName}</li>` : ''}
           </ul>
-          <p class="debug-info">
-            Τρέχων χρήστης: ${auth.currentUser?.email || 'Ανώνυμος'}<br>
-            ${isDirector() ? '(Διευθυντής)' : ''}
-          </p>
         </div>
       `;
       return;
@@ -201,8 +220,7 @@ async function viewLessons() {
         <p><small>Καθηγητής: ${data.teacherLastName}</small></p>
       `;
 
-      const showDeleteButton = isDirector() || auth.currentUser?.email === data.teacherEmail;
-      if (showDeleteButton) {
+      if (isDirector() || auth.currentUser?.email === data.teacherEmail) {
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "Διαγραφή";
         deleteBtn.className = "delete-btn";
@@ -214,41 +232,63 @@ async function viewLessons() {
               setTimeout(() => card.remove(), 300);
             } catch (error) {
               console.error("Delete error:", error);
-              alert("Σφάλμα κατά τη διαγραφή");
+              showMessage('guestMessage', 'Σφάλμα κατά τη διαγραφή', 'error');
             }
           }
         };
         card.appendChild(deleteBtn);
-        console.log("Added delete button for:", data.teacherEmail);
       }
       
       container.appendChild(card);
     });
-
   } catch (error) {
     console.error("Error:", error);
-    document.getElementById("lessonsContainer").innerHTML = `
+    container.innerHTML = `
       <div class="error-message">
         <p>Σφάλμα φόρτωσης: ${error.message}</p>
         <button class="retry-btn" onclick="viewLessons()">Δοκιμάστε ξανά</button>
       </div>
     `;
+  } finally {
+    viewBtn.disabled = false;
+    viewBtn.textContent = "Προβολή Ύλης";
   }
 }
 
-// Initialize app
+// Initialize App
 document.addEventListener('DOMContentLoaded', () => {
-  console.log("DOM fully loaded");
+  // Set current date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('dateInput').value = today;
   
   // Auth state listener
   onAuthStateChanged(auth, (user) => {
-    console.log("Auth state changed:", user ? "Logged in" : "Logged out");
     toggleAdminView(!!user);
   });
 
-  // Add event listeners
+  // Event listeners
   document.getElementById("loginBtn").addEventListener("click", handleLogin);
   document.getElementById("logoutBtn").addEventListener("click", handleLogout);
   document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
   document.getElementById("viewLessonsBtn").addEventListener("click", viewLessons);
+  
+  // Press Enter to submit forms
+  document.getElementById("password").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") handleLogin();
+  });
+  
+  document.getElementById("lessonFilter").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") viewLessons();
+  });
+});
+
+// Global error handling
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+  showMessage('adminMessage', `Σφάλμα: ${event.error.message}`, 'error');
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled rejection:', event.reason);
+  showMessage('adminMessage', `Σφάλμα: ${event.reason.message}`, 'error');
 });

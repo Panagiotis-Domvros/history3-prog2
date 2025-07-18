@@ -1,214 +1,85 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Καταχώριση Ύλης - Σχολεία Πυλαίας & Επανομής</title>
-  <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      margin: 20px; 
-      background-color: #f8f8f0;
-      color: #333; 
-    }
-    .container { 
-      max-width: 900px; 
-      margin: auto; 
-      background: white; 
-      padding: 20px; 
-      border-radius: 8px; 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-    }
-    h1 { 
-      color: #008080;
-      font-size: 26px; 
-      border-bottom: 2px solid #D4AF37;
-      padding-bottom: 10px;
-    }
-    h2, h3, h4 { 
-      color: #008080;
-      margin-top: 10px; 
-    }
-    h2 {
-      font-size: 14px;
-      color: #666;
-      font-weight: normal;
-      margin-top: 5px;
-    }
-    label { 
-      display: block; 
-      margin-bottom: 5px; 
-      font-weight: bold; 
-      color: #008080;
-    }
-    #classInput, #studentClass, #lessonFilter, 
-    #privateClass, #searchClassInput {
-      text-transform: uppercase;
-    }
-    input[type="text"], input[type="password"], input[type="date"], textarea, select {
-      width: calc(100% - 22px); 
-      padding: 10px; 
-      margin-bottom: 15px; 
-      border: 1px solid #ddd; 
-      border-radius: 4px;
-      background-color: #f8f8f0;
-    }
-    button {
-      background-color: #008080;
-      color: white; 
-      padding: 10px 15px; 
-      border: none; 
-      border-radius: 4px; 
-      cursor: pointer; 
-      font-size: 16px; 
-      margin-right: 10px;
-      margin-bottom: 10px;
-      transition: background-color 0.3s;
-    }
-    button:hover { 
-      background-color: #006666;
-    }
-    button:disabled {
-      background-color: #cccccc;
-      cursor: not-allowed;
-    }
-    .lesson-card {
-      background-color: #f0f8f8;
-      border: 1px solid #cce5e5; 
-      border-left: 5px solid #D4AF37;
-      padding: 15px; 
-      margin-bottom: 10px; 
-      border-radius: 5px; 
-      position: relative;
-    }
-    .delete-btn {
-      position: absolute; 
-      top: 10px; 
-      right: 10px; 
-      background-color: #D4AF37;
-      color: #333;
-    }
-    .delete-btn:hover { 
-      background-color: #b38f2b;
-    }
-    .error-message { 
-      color: #c00; 
-      margin-top: 10px; 
-    }
-    .success-message { 
-      color: #008080; 
-      margin-top: 10px; 
-    }
-    .info-message { 
-      color: #D4AF37;
-      margin-top: 10px;
-    }
-    .capitalize-hint {
-      font-size: 12px;
-      color: #D4AF37;
-      font-style: italic;
-      margin-top: -10px;
-      margin-bottom: 10px;
-    }
-    .search-filters {
-      background-color: #f0f8f8;
-      padding: 15px;
-      border-radius: 5px;
-      margin-bottom: 20px;
-    }
- rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /lessons/{lessonId} {
-      allow read: if true;
-      allow create: if request.auth != null;
-      allow delete: if 
-        request.auth.token.email == 'pa.domvros@gmail.com' || 
-        request.auth.token.email == resource.data.teacherEmail;
-    }
-  }
-}</style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>Καταχωρίσεις Ύλης</h1>
-    <h2>Δημιουργία: Παναγιώτης Δόμβρος - Διευθυντής 1ου Γυμνασίου Πυλαίας, All rights reserved 2025-26</h2>
+    <h1>Καταχώριση Ύλης</h1>
+    <h2>Δημιουργία: Παναγιώτης Δόμβρος - Διευθυντής 1ου Γυμνασίου Πυλαίας</h2>
 
     <div id="loginForm">
       <label for="email">Email:</label>
-      <input type="text" id="email" />
+      <input type="text" id="email" placeholder="π.χ. john.doe@example.com">
       <label for="password">Κωδικός:</label>
-      <input type="password" id="password" />
+      <input type="password" id="password" placeholder="••••••••">
       <button type="button" id="loginBtn">Σύνδεση Εκπαιδευτικού</button>
       <p id="loginError" class="error-message"></p>
     </div>
 
     <div id="adminSection" style="display:none;">
-      <h3>Καταχώριση Ύλης</h3>
-      <label for="schoolInput">Σχολείο:</label>
-      <select id="schoolInput" required>
-        <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
-        <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
-      </select>
-      <label for="lessonInput">Μάθημα:</label>
-      <input type="text" id="lessonInput" required />
-      <label for="classInput">Τμήμα:</label>
-      <input type="text" id="classInput" required />
-      <label for="dateInput">Ημερομηνία:</label>
-      <input type="date" id="dateInput" required />
-      <label for="taughtMaterialInput">Ύλη που διδάχθηκε:</label>
-      <textarea id="taughtMaterialInput" required></textarea>
-      <label for="attentionNotesInput">Τι πρέπει να προσέξουν οι μαθητές:</label>
-      <textarea id="attentionNotesInput"></textarea>
-      <button type="button" id="submitLessonBtn">Καταχώριση Ύλης</button>
-      <p id="adminMessage" class="success-message"></p>
-      <button type="button" id="logoutBtn">Αποσύνδεση Εκπαιδευτικού</button>
+      <div class="form-section">
+        <h3>Καταχώριση Ύλης</h3>
+        <label for="schoolInput">Σχολείο:</label>
+        <select id="schoolInput" required>
+          <option value="" disabled selected>Επιλέξτε σχολείο</option>
+          <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
+          <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+        </select>
+        
+        <label for="lessonInput">Μάθημα:</label>
+        <input type="text" id="lessonInput" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
+        
+        <label for="classInput">Τμήμα:</label>
+        <input type="text" id="classInput" required placeholder="π.χ. Α1">
+        <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
+        
+        <label for="dateInput">Ημερομηνία:</label>
+        <input type="date" id="dateInput" required>
+        
+        <label for="taughtMaterialInput">Ύλη που διδάχθηκε:</label>
+        <textarea id="taughtMaterialInput" required rows="4" placeholder="Περιγράψτε την ύλη..."></textarea>
+        
+        <label for="attentionNotesInput">Σημειώσεις για μαθητές:</label>
+        <textarea id="attentionNotesInput" rows="3" placeholder="Προαιρετικά σχόλια..."></textarea>
+        
+        <button type="button" id="submitLessonBtn">Καταχώριση Ύλης</button>
+        <p id="adminMessage" class="message"></p>
+      </div>
 
-      <div id="privateNotesSection">
-        <h3>Ιδιωτικές Σημειώσεις</h3>
-        <label for="privateLastName">Επίθετο Μαθητή:</label>
-        <input type="text" id="privateLastName" required />
-        <label for="privateClass">Τμήμα:</label>
-        <input type="text" id="privateClass" required />
-        <label for="privateNotesInput">Σημειώσεις:</label>
-        <textarea id="privateNotesInput" required></textarea>
-        <button type="button" id="submitPrivateNoteBtn">Καταχώριση Σημείωσης</button>
-        <p id="privateNoteMessage" class="success-message"></p>
+      <div class="action-buttons">
+        <button type="button" id="logoutBtn">Αποσύνδεση</button>
+      </div>
 
-        <h4>Αναζήτηση Σημειώσεων</h4>
-        <label for="searchLastNameInput">Επίθετο Μαθητή:</label>
-        <input type="text" id="searchLastNameInput" />
-        <label for="searchClassInput">Τμήμα:</label>
-        <input type="text" id="searchClassInput" />
-        <button type="button" id="searchPrivateNotesBtn">Αναζήτηση Σημειώσεων</button>
-        <div id="privateNotesList"></div>
+      <div class="search-section">
+        <h3>Προβολή Ύλης</h3>
+        <div class="search-filters">
+          <label for="schoolInputView">Σχολείο:</label>
+          <select id="schoolInputView" required>
+            <option value="" disabled selected>Επιλέξτε σχολείο</option>
+            <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
+            <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
+          </select>
+          
+          <label for="lessonFilter">Μάθημα:</label>
+          <input type="text" id="lessonFilter" required placeholder="π.χ. ΜΑΘΗΜΑΤΙΚΑ">
+          
+          <label for="studentClass">Τμήμα:</label>
+          <input type="text" id="studentClass" required placeholder="π.χ. Α1">
+          
+          <label for="teacherLastName">Επίθετο Καθηγητή:</label>
+          <input type="text" id="teacherLastName" placeholder="Προαιρετικό">
+          
+          <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
+        </div>
+        <div id="lessonsContainer"></div>
       </div>
     </div>
-
-    <h3>Προβολή Ύλης</h3>
-    <div class="search-filters">
-      <label for="schoolInputView">Σχολείο:</label>
-      <select id="schoolInputView" required>
-        <option value="1st_gymnasio_pylaias">1ο Γυμνάσιο Πυλαίας</option>
-        <option value="gymnasio_epanomis">Γυμνάσιο Επανομής</option>
-      </select>
-      <label for="lessonFilter">Μάθημα:</label>
-      <input type="text" id="lessonFilter" required />
-      <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
-      
-      <label for="studentClass">Τμήμα:</label>
-      <input type="text" id="studentClass" required />
-      <p class="capitalize-hint">(Θα μετατραπούν αυτόματα σε ΚΕΦΑΛΑΙΑ)</p>
-      
-      <label for="teacherLastName">Επίθετο Εκπαιδευτικού:</label>
-      <input type="text" id="teacherLastName" />
-      
-      <button type="button" id="viewLessonsBtn">Προβολή Ύλης</button>
-    </div>
-    <p id="guestMessage" class="info-message"></p>
-    <div id="lessonsContainer"></div>
   </div>
 
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="main.js"></script>
 </body>
 </html>
