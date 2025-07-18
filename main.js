@@ -31,15 +31,42 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Βοηθητικές Συναρτήσεις
+function showMessage(elementId, message, isError = false) {
+  const element = document.getElementById(elementId);
+  element.textContent = message;
+  element.style.color = isError ? '#c00' : '#008080';
+}
+
 function getTeacherName(email) {
   const teachers = {
     'pa.domvros@gmail.com': 'Παναγιώτης Δόμβρος',
     'mariamalamidou@gmail.com': 'Μαρία Μαλαμίδου'
-    'evakyriazo@gmail.com': 'Ευαγγελία Κυριαζοπούλου'
   };
   return teachers[email] || email.split('@')[0].split('.')[1]?.toUpperCase() || '';
 }
 
+// Σύνδεση/Αποσύνδεση
+async function handleLogin() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    showMessage('loginError', '');
+  } catch (error) {
+    showMessage('loginError', 'Λάθος email ή κωδικός', true);
+  }
+}
+
+async function handleLogout() {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
+}
+
+// Διαχείριση Μαθημάτων
 async function submitLesson() {
   const lessonData = {
     school: document.getElementById("schoolInput").value,
@@ -55,67 +82,81 @@ async function submitLesson() {
 
   try {
     await addDoc(collection(db, "lessons"), lessonData);
-    document.getElementById("adminMessage").textContent = "Η ύλη καταχωρίστηκε επιτυχώς!";
+    showMessage('adminMessage', 'Η ύλη καταχωρίστηκε επιτυχώς!');
   } catch (error) {
-    document.getElementById("adminMessage").textContent = "Σφάλμα καταχώρησης: " + error.message;
+    showMessage('adminMessage', `Σφάλμα καταχώρησης: ${error.message}`, true);
   }
 }
 
 async function viewLessons() {
-  const querySnapshot = await getDocs(query(
-    collection(db, "lessons"),
-    where("school", "==", document.getElementById("schoolInputView").value),
-    where("lesson", "==", document.getElementById("lessonFilter").value.trim().toUpperCase()),
-    where("class", "==", document.getElementById("studentClass").value.trim().toUpperCase()),
-    orderBy("timestamp", "desc")
-  ));
+  const school = document.getElementById("schoolInputView").value;
+  const lesson = document.getElementById("lessonFilter").value.trim().toUpperCase();
+  const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
 
-  const container = document.getElementById("lessonsContainer");
-  container.innerHTML = '';
+  try {
+    const q = query(
+      collection(db, "lessons"),
+      where("school", "==", school),
+      where("lesson", "==", lesson),
+      where("class", "==", studentClass),
+      orderBy("timestamp", "desc")
+    );
+    
+    const snapshot = await getDocs(q);
+    const container = document.getElementById("lessonsContainer");
+    container.innerHTML = '';
 
-  querySnapshot.forEach(doc => {
-    const data = doc.data();
-    const card = document.createElement("div");
-    card.className = "lesson-card";
-    card.innerHTML = `
-      <h4>${data.lesson} - ${data.class}</h4>
-      <p><strong>Ημερομηνία:</strong> ${new Date(data.date).toLocaleDateString('el-GR')}</p>
-      <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
-      <p><strong>Καθηγητής:</strong> ${data.teacherName}</p>
-    `;
-
-    if (auth.currentUser?.email === data.teacherEmail || auth.currentUser?.email === 'pa.domvros@gmail.com') {
-      const deleteBtn = document.createElement("button");
-      deleteBtn.className = "delete-btn";
-      deleteBtn.textContent = "Διαγραφή";
-      deleteBtn.onclick = () => deleteDoc(doc.ref);
-      card.appendChild(deleteBtn);
+    if (snapshot.empty) {
+      container.innerHTML = '<div class="no-results">Δεν βρέθηκαν καταχωρήσεις</div>';
+      return;
     }
 
-    container.appendChild(card);
-  });
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const card = document.createElement("div");
+      card.className = "lesson-card";
+      card.innerHTML = `
+        <h4>${data.lesson} - ${data.class}</h4>
+        <p><strong>Ημερομηνία:</strong> ${new Date(data.date).toLocaleDateString('el-GR')}</p>
+        <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
+        <p><strong>Καθηγητής:</strong> ${data.teacherName}</p>
+      `;
+
+      if (auth.currentUser?.email === data.teacherEmail || auth.currentUser?.email === 'pa.domvros@gmail.com') {
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "delete-btn";
+        deleteBtn.textContent = "Διαγραφή";
+        deleteBtn.onclick = async () => {
+          if (confirm("Θέλετε να διαγράψετε αυτή την καταχώρηση;")) {
+            await deleteDoc(doc.ref);
+            card.remove();
+          }
+        };
+        card.appendChild(deleteBtn);
+      }
+
+      container.appendChild(card);
+    });
+
+  } catch (error) {
+    console.error("Error:", error);
+    document.getElementById("lessonsContainer").innerHTML = 
+      '<div class="error-message">Σφάλμα φόρτωσης δεδομένων</div>';
+  }
 }
 
 // Αρχικοποίηση
 document.addEventListener('DOMContentLoaded', () => {
+  // Ορίζουμε σημερινή ημερομηνία
   document.getElementById('dateInput').valueAsDate = new Date();
 
-  document.getElementById("loginBtn").addEventListener("click", async () => {
-    try {
-      await signInWithEmailAndPassword(
-        auth,
-        document.getElementById("email").value,
-        document.getElementById("password").value
-      );
-    } catch (error) {
-      document.getElementById("loginError").textContent = "Σφάλμα σύνδεσης: " + error.message;
-    }
-  });
-
-  document.getElementById("logoutBtn").addEventListener("click", () => signOut(auth));
+  // Σύνδεση Event Listeners
+  document.getElementById("loginBtn").addEventListener("click", handleLogin);
+  document.getElementById("logoutBtn").addEventListener("click", handleLogout);
   document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
   document.getElementById("viewLessonsBtn").addEventListener("click", viewLessons);
 
+  // Ελέγχουμε κατάσταση σύνδεσης
   onAuthStateChanged(auth, (user) => {
     document.getElementById("loginForm").style.display = user ? "none" : "block";
     document.getElementById("adminSection").style.display = user ? "block" : "none";
