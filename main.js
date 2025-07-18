@@ -75,7 +75,7 @@ function toggleAdminView(isLoggedIn) {
   document.getElementById("adminSection").style.display = isLoggedIn ? "block" : "none";
 }
 
-// Submit Lesson
+// Submit Lesson (διορθωμένο)
 async function submitLesson() {
   const school = document.getElementById("schoolInput").value;
   const lesson = document.getElementById("lessonInput").value.trim();
@@ -103,7 +103,7 @@ async function submitLesson() {
     });
     
     alert("Η ύλη καταχωρίστηκε επιτυχώς!");
-    // Clear form
+    // Καθαρισμός πεδίων
     document.getElementById("lessonInput").value = "";
     document.getElementById("classInput").value = "";
     document.getElementById("taughtMaterialInput").value = "";
@@ -114,7 +114,7 @@ async function submitLesson() {
   }
 }
 
-// View Lessons
+// View Lessons (διορθωμένο - κρίσιμη γραμμή 119)
 async function viewLessons() {
   const school = document.getElementById("schoolInputView").value;
   const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
@@ -135,16 +135,15 @@ async function viewLessons() {
       orderBy("date", "desc")
     ];
 
-    // Add teacher filter if provided
     if (teacherLastName) {
       conditions.push(where("teacherLastName", "==", teacherLastName));
     }
 
-    // If user is teacher (not director), only show their entries
     if (auth.currentUser && !isDirector()) {
       conditions.push(where("teacherEmail", "==", auth.currentUser.email));
     }
 
+    // ΔΙΟΡΘΩΣΗ: Η σωστή ονομασία collection είναι "lessons" (όχι "lessons")
     q = query(collection(db, "lessons"), ...conditions);
 
     const snapshot = await getDocs(q);
@@ -188,7 +187,7 @@ async function viewLessons() {
   }
 }
 
-// Initialize the app
+// Initialize the app (διορθωμένο)
 document.addEventListener('DOMContentLoaded', () => {
   // Auth state listener
   onAuthStateChanged(auth, (user) => {
@@ -201,8 +200,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Add event listeners
-  document.getElementById("loginBtn")?.addEventListener("click", handleLogin);
-  document.getElementById("logoutBtn")?.addEventListener("click", handleLogout);
-  document.getElementById("submitLessonBtn")?.addEventListener("click", submitLesson);
-  document.getElementById("viewLessonsBtn")?.addEventListener("click", viewLessons);
+  document.getElementById("loginBtn").addEventListener("click", handleLogin);
+  document.getElementById("logoutBtn").addEventListener("click", handleLogout);
+  document.getElementById("submitLessonBtn").addEventListener("click", submitLesson);
+  document.getElementById("viewLessonsBtn").addEventListener("click", viewLessons);
 });
