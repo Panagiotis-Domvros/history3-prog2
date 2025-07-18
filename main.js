@@ -116,6 +116,7 @@ async function submitLesson() {
   const date = document.getElementById("dateInput").value;
   const taughtMaterial = document.getElementById("taughtMaterialInput").value.trim();
   const attentionNotes = document.getElementById("attentionNotesInput").value.trim();
+  const homework = document.getElementById("homeworkInput").value.trim();
   const submitBtn = document.getElementById("submitLessonBtn");
 
   if (!school || !lesson || !classVal || !date || !taughtMaterial) {
@@ -134,6 +135,7 @@ async function submitLesson() {
       date: new Date(date).toISOString(),
       taughtMaterial,
       attentionNotes: attentionNotes || "—",
+      homework: homework || "—",
       timestamp: new Date().toISOString(),
       teacherEmail: auth.currentUser.email,
       teacherLastName: getLastNameFromEmail(auth.currentUser.email)
@@ -145,6 +147,7 @@ async function submitLesson() {
     document.getElementById("lessonInput").value = "";
     document.getElementById("taughtMaterialInput").value = "";
     document.getElementById("attentionNotesInput").value = "";
+    document.getElementById("homeworkInput").value = "";
     document.getElementById("classInput").focus();
   } catch (error) {
     console.error("Error adding document:", error);
@@ -173,7 +176,7 @@ async function viewLessons() {
     viewBtn.textContent = "Φόρτωση...";
     container.innerHTML = '<p class="loading">Φόρτωση δεδομένων...</p>';
 
-    const conditions = [
+    let conditions = [
       where("school", "==", school),
       where("class", "==", studentClass),
       where("lesson", "==", lessonFilter),
@@ -184,6 +187,7 @@ async function viewLessons() {
       conditions.push(where("teacherLastName", "==", teacherLastName));
     }
 
+    // Only filter by teacher email if logged in and not director
     if (auth.currentUser && !isDirector()) {
       conditions.push(where("teacherEmail", "==", auth.currentUser.email));
     }
@@ -217,10 +221,11 @@ async function viewLessons() {
         <p><strong>Ημερομηνία:</strong> ${new Date(data.date).toLocaleDateString('el-GR')}</p>
         <p><strong>Ύλη:</strong> ${data.taughtMaterial}</p>
         ${data.attentionNotes !== "—" ? `<p><strong>Σημειώσεις:</strong> ${data.attentionNotes}</p>` : ''}
+        ${data.homework !== "—" ? `<p><strong>Εργασία:</strong> ${data.homework}</p>` : ''}
         <p><small>Καθηγητής: ${data.teacherLastName}</small></p>
       `;
 
-      if (isDirector() || auth.currentUser?.email === data.teacherEmail) {
+      if (isDirector() || (auth.currentUser && auth.currentUser.email === data.teacherEmail)) {
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "Διαγραφή";
         deleteBtn.className = "delete-btn";
