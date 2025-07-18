@@ -116,7 +116,18 @@
       border-radius: 5px;
       margin-bottom: 20px;
     }
-  </style>
+ rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /lessons/{lessonId} {
+      allow read: if true;
+      allow create: if request.auth != null;
+      allow delete: if 
+        request.auth.token.email == 'pa.domvros@gmail.com' || 
+        request.auth.token.email == resource.data.teacherEmail;
+    }
+  }
+}</style>
 </head>
 <body>
   <div class="container">

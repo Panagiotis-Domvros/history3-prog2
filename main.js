@@ -121,42 +121,35 @@ async function submitLesson() {
   }
 }
 
-// Προβολή μαθημάτων
+// Προβολή μαθημάτων (Τελική έκδοση)
 async function viewLessons() {
-  const school = document.getElementById("schoolInputView").value;
-  const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
-  const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
-  const teacherLastName = document.getElementById("teacherLastName").value.trim().toUpperCase();
-
-  if (!school || !studentClass || !lessonFilter) {
-    alert("Συμπληρώστε Σχολείο, Μάθημα και Τμήμα");
-    return;
-  }
-
   try {
-    const conditions = [
+    const school = document.getElementById("schoolInputView").value;
+    const studentClass = document.getElementById("studentClass").value.trim().toUpperCase();
+    const lessonFilter = document.getElementById("lessonFilter").value.trim().toUpperCase();
+
+    if (!school || !studentClass || !lessonFilter) {
+      throw new Error("Συμπληρώστε Σχολείο, Τμήμα και Μάθημα");
+    }
+
+    const container = document.getElementById("lessonsContainer");
+    container.innerHTML = '<p class="loading">Φόρτωση δεδομένων...</p>';
+
+    // Δημιουργία query
+    const q = query(
+      collection(db, "lessons"),
       where("school", "==", school),
       where("class", "==", studentClass),
       where("lesson", "==", lessonFilter),
       orderBy("timestamp", "desc")
-    ];
+    );
 
-    if (teacherLastName) {
-      conditions.push(where("teacherLastName", "==", teacherLastName));
-    }
-
-    if (auth.currentUser && !isDirector()) {
-      conditions.push(where("teacherEmail", "==", auth.currentUser.email));
-    }
-
-    const q = query(collection(db, "lessons"), ...conditions);
     const snapshot = await getDocs(q);
-    const container = document.getElementById("lessonsContainer");
     container.innerHTML = "";
 
     if (snapshot.empty) {
       container.innerHTML = `
-        <div class="info-message">
+        <div class="no-results">
           <p>Δεν βρέθηκαν καταχωρήσεις για:</p>
           <ul>
             <li>Σχολείο: ${getSchoolName(school)}</li>
@@ -194,12 +187,13 @@ async function viewLessons() {
       }
       container.appendChild(card);
     });
+
   } catch (error) {
-    console.error("Σφάλμα φόρτωσης:", error);
+    console.error("Σφάλμα:", error);
     document.getElementById("lessonsContainer").innerHTML = `
       <div class="error-message">
-        <p>Σφάλμα φόρτωσης δεδομένων</p>
-        <p>${error.message}</p>
+        <p>Σφάλμα φόρτωσης: ${error.message}</p>
+        <button onclick="viewLessons()">Δοκιμάστε ξανά</button>
       </div>
     `;
   }
